@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎲 5班 随机抽签</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#667eea;--secondary:#f6a623;--success:#48c774;
+  --text:#333;--text-light:#888;--shadow:0 8px 32px rgba(0,0,0,.12)
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  min-height:100vh;color:var(--text);overflow-x:hidden;
+  display:flex;flex-direction:column;align-items:center;padding:20px 16px
+}
+.header{text-align:center;color:#fff;margin-bottom:24px;margin-top:16px}
+.header h1{font-size:30px;font-weight:900;letter-spacing:1px;text-shadow:0 2px 12px rgba(0,0,0,.2)}
+.header p{font-size:14px;opacity:.85;margin-top:6px}
+
+.card{background:#fff;border-radius:28px;box-shadow:var(--shadow);padding:36px 28px;width:100%;max-width:480px;text-align:center;position:relative;overflow:hidden}
+
+.slot{
+  min-height:240px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#f8f9ff,#fff);border-radius:24px;
+  border:4px solid #eee;margin-bottom:24px;transition:border-color .2s;overflow:hidden;position:relative
+}
+.slot.spinning{border-color:var(--secondary);animation:pulse .25s ease-in-out infinite alternate}
+@keyframes pulse{from{border-color:var(--secondary)}to{border-color:var(--primary)}}
+
+.slot-item{text-align:center;animation:flash .1s ease}
+@keyframes flash{from{opacity:.3;transform:scale(.85) translateY(15px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.slot-ava{font-size:96px;line-height:1;margin-bottom:14px;display:block}
+.slot-name{font-size:34px;font-weight:900;color:var(--text);letter-spacing:1px}
+.slot-num{font-size:13px;color:var(--text-light);margin-top:6px;font-weight:600}
+
+.result{animation:popIn .45s cubic-bezier(.175,.885,.32,1.275);border-color:var(--primary)!important}
+@keyframes popIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+
+.start-btn{
+  width:100%;padding:20px;background:linear-gradient(135deg,#f6a623,#f0665d);
+  color:#fff;border:none;border-radius:18px;font-size:20px;font-weight:800;
+  cursor:pointer;transition:.15s;font-family:inherit;
+  box-shadow:0 8px 24px rgba(246,166,35,.4)
+}
+.start-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(246,166,35,.55)}
+.start-btn:active{transform:scale(.97)}
+.start-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+.action-row{display:flex;gap:10px;margin-top:14px}
+.action-row button{flex:1;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.btn-secondary{background:#f0f2f5;color:var(--text)}
+.btn-secondary:hover{background:#e0e3f0}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.btn-primary:hover{transform:translateY(-1px)}
+
+.options-row{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:18px;border-top:1px dashed #e0e3f0;font-size:13px;color:var(--text-light)}
+.toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.toggle input{width:36px;height:20px;appearance:none;background:#ddd;border-radius:20px;position:relative;cursor:pointer;transition:.2s}
+.toggle input:checked{background:var(--primary)}
+.toggle input::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;left:2px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle input:checked::after{left:18px}
+
+.stats-row{display:flex;justify-content:center;gap:24px;margin-top:14px;font-size:13px;color:var(--text-light)}
+.stats-row strong{color:var(--primary);font-weight:800;font-size:15px}
+
+.list-btn{margin-top:14px;background:none;border:none;color:#fff;opacity:.8;cursor:pointer;font-size:13px;text-decoration:underline;font-family:inherit}
+.list-btn:hover{opacity:1}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:24px;padding:24px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-title{font-size:18px;font-weight:800}
+.modal-close{width:32px;height:32px;border-radius:50%;border:none;background:#f0f2f5;cursor:pointer;font-size:14px}
+.list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}
+.list-item{padding:10px 6px;text-align:center;background:#f8f9ff;border-radius:12px;font-size:13px;transition:.15s;position:relative}
+.list-item.picked{background:#e8f5e8;color:var(--success);font-weight:700}
+.list-item.picked::after{content:'✓';position:absolute;top:4px;right:6px;font-size:11px;color:var(--success)}
+.list-ava{font-size:24px;display:block;margin-bottom:3px}
+.list-num{font-size:10px;color:var(--text-light);position:absolute;top:4px;left:6px;font-weight:700}
+
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:299}
+
+.footer{margin-top:24px;color:rgba(255,255,255,.6);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+
+<div class="header">
+  <h1>🎲 5班 随机抽签</h1>
+  <p>点击按钮，随机抽取一位同学</p>
+</div>
+
+<div class="card">
+  <div id="slot" class="slot">
+    <div class="slot-item">
+      <span class="slot-ava">🎯</span>
+      <div class="slot-name">准备好了吗？</div>
+      <div class="slot-num">点击下方按钮开始</div>
+    </div>
+  </div>
+
+  <button class="start-btn" id="start-btn" onclick="startPick()">🎲 开始抽签！</button>
+  <div class="action-row" id="action-row" style="display:none">
+    <button class="btn-secondary" onclick="startPick()">🔄 再抽一次</button>
+    <button class="btn-primary" onclick="resetHistory()">↺ 重置已抽记录</button>
+  </div>
+
+  <div class="options-row">
+    <label class="toggle">
+      <input type="checkbox" id="no-repeat" checked>
+      <span>不重复抽（直到所有人都被抽过）</span>
+    </label>
+  </div>
+
+  <div class="stats-row">
+    <span>已抽：<strong id="picked-count">0</strong></span>
+    <span>剩余：<strong id="remain-count">50</strong></span>
+    <span>共：<strong id="total-count">50</strong></span>
+  </div>
+</div>
+
+<button class="list-btn" onclick="openList()">查看全部名单 →</button>
+
+<div class="footer">5班抽签器 · 数据本地保存</div>
+
+<!-- Student list modal -->
+<div class="modal-overlay" id="modal-list" onclick="if(event.target===this)closeList()">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2 class="modal-title">📋 全班同学（共 <span id="modal-count">50</span> 人）</h2>
+      <button class="modal-close" onclick="closeList()">✕</button>
+    </div>
+    <div class="list-grid" id="list-grid"></div>
+  </div>
+</div>
+
+<script>
+const STUDENTS_NAMES = ['蔡利轩','曾永霖','陈冬健','陈雯菁','陈熙钘','程慧仪','杨乐宇','邓林立','邓宇立','邓志豪','段雅菲','樊莹莹','郭恩善','何国滨','何永义','何振宇','胡蔓文','黄国峰','黄如意','康凯彤','邝翠轩','李林','梁潇宇','刘美君','陆宇强','陆昱能','罗日锦','罗雅琴','马雅馨','莫国强','倪族航','聂安妮','欧继煌','欧雨菲','欧泽昌','沈艺','谭子伊','谢广维','易斯瀚','钟李奡','周一梦','朱佳宁','朱奕涵','韦茵琦','欧祖康','黄智漮','王亮','曾炫钰','罗芷晴','谭青海'];
+
+const ANIMALS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🐤','🦆','🦉','🦇','🐺','🐴','🦄','🐝','🦋','🐢','🦎','🐙','🦑','🐠','🐡','🐬','🐳','🦈','🐊','🐘','🦒','🦓','🦔','🐿️','🦜','🦚','🦩','🦢','🐓','🦃','🦅','🦉'];
+
+const STORAGE_KEY = 'class5PickerHistory';
+const STUDENTS = STUDENTS_NAMES.map((name, i) => ({
+  number: i + 1,
+  name,
+  avatar: ANIMALS[i % ANIMALS.length]
+}));
+
+let pickedHistory = loadHistory();
+let pickAnimTimer = null;
+let lastPickedIdx = null;
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch(e) { return []; }
+}
+function saveHistory() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pickedHistory)); } catch(e) {}
+}
+
+function updateStats() {
+  document.getElementById('picked-count').textContent = pickedHistory.length;
+  document.getElementById('remain-count').textContent = STUDENTS.length - pickedHistory.length;
+  document.getElementById('total-count').textContent = STUDENTS.length;
+  document.getElementById('modal-count').textContent = STUDENTS.length;
+}
+
+function renderSlot(s, isResult) {
+  const slot = document.getElementById('slot');
+  slot.innerHTML = `<div class="slot-item">
+    <span class="slot-ava">${s.avatar}</span>
+    <div class="slot-name">${s.name}</div>
+    <div class="slot-num">学号 ${String(s.number).padStart(2,'0')}</div>
+  </div>`;
+  if (isResult) slot.classList.add('result');
+  else slot.classList.remove('result');
+}
+
+function startPick() {
+  clearTimeout(pickAnimTimer);
+
+  const noRepeat = document.getElementById('no-repeat').checked;
+  let pool = noRepeat ? STUDENTS.filter(s => !pickedHistory.includes(s.number)) : STUDENTS.slice();
+
+  if (pool.length === 0) {
+    alert('所有同学都已经被抽过了！点击「重置已抽记录」可以重新开始。');
+    return;
+  }
+
+  const startBtn = document.getElementById('start-btn');
+  startBtn.disabled = true;
+  startBtn.textContent = '抽签中…';
+  document.getElementById('action-row').style.display = 'none';
+  document.getElementById('slot').classList.add('spinning');
+  document.getElementById('slot').classList.remove('result');
+
+  // Pick winner
+  const winner = pool[Math.floor(Math.random() * pool.length)];
+
+  const totalSteps = 30 + Math.floor(Math.random() * 14);
+  let step = 0, delay = 55;
+
+  function tick() {
+    const rand = STUDENTS[Math.floor(Math.random() * STUDENTS.length)];
+    renderSlot(rand, false);
+    step++;
+    if (step >= totalSteps) {
+      document.getElementById('slot').classList.remove('spinning');
+      renderSlot(winner, true);
+      // Save history
+      if (!pickedHistory.includes(winner.number)) {
+        pickedHistory.push(winner.number);
+        saveHistory();
+      }
+      updateStats();
+      startBtn.style.display = 'none';
+      document.getElementById('action-row').style.display = 'flex';
+      launchConfetti();
+    } else {
+      if (step > totalSteps * 0.65) delay = Math.min(delay * 1.18, 460);
+      pickAnimTimer = setTimeout(tick, delay);
+    }
+  }
+  tick();
+}
+
+function resetHistory() {
+  if (!confirm('确定要重置「已抽记录」吗？所有同学将重新参与抽签。')) return;
+  pickedHistory = [];
+  saveHistory();
+  updateStats();
+  // Reset UI
+  const slot = document.getElementById('slot');
+  slot.classList.remove('result');
+  slot.innerHTML = `<div class="slot-item">
+    <span class="slot-ava">🎯</span>
+    <div class="slot-name">已重置！</div>
+    <div class="slot-num">所有同学重新参与抽签</div>
+  </div>`;
+  const startBtn = document.getElementById('start-btn');
+  startBtn.style.display = 'block';
+  startBtn.disabled = false;
+  startBtn.textContent = '🎲 开始抽签！';
+  document.getElementById('action-row').style.display = 'none';
+}
+
+function openList() {
+  const grid = document.getElementById('list-grid');
+  grid.innerHTML = STUDENTS.map(s => {
+    const picked = pickedHistory.includes(s.number);
+    return `<div class="list-item ${picked?'picked':''}">
+      <div class="list-num">${s.number}</div>
+      <span class="list-ava">${s.avatar}</span>
+      <div>${s.name}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('modal-list').classList.add('show');
+}
+function closeList() { document.getElementById('modal-list').classList.remove('show'); }
+
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const colors = ['#667eea','#764ba2','#f6a623','#48c774','#ff7eb6','#00d1b2','#ff3860'];
+  const particles = Array.from({length:90}, () => ({
+    x: Math.random() * canvas.width, y: -20,
+    vx: (Math.random() - .5) * 6, vy: Math.random() * 4 + 2,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    size: Math.random() * 10 + 4,
+    rot: Math.random() * Math.PI * 2,
+    rotSpd: (Math.random() - .5) * .3,
+    shape: Math.random() < .5 ? 'rect' : 'circle'
+  }));
+  let frame = 0;
+  function animate() {
+    if (frame++ > 160) { ctx.clearRect(0, 0, canvas.width, canvas.height); return; }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.rot += p.rotSpd; p.vy += .12;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      if (p.shape === 'circle') { ctx.beginPath(); ctx.arc(0, 0, p.size/2, 0, Math.PI*2); ctx.fill(); }
+      else { ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*.6); }
+      ctx.restore();
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeList();
+  if (e.key === ' ' || e.key === 'Enter') {
+    const btn = document.getElementById('start-btn');
+    if (!btn.disabled && btn.style.display !== 'none') { e.preventDefault(); startPick(); }
+  }
+});
+
+updateStats();
+</script>
+</body>
+</html>
